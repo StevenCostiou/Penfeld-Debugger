@@ -3,8 +3,9 @@ Class {
 	#superclass : #PenWindow,
 	#instVars : [
 		'debugSession',
-		'stackStable',
-		'codeEditor'
+		'codeEditor',
+		'stackTable',
+		'announcer'
 	],
 	#category : #'Penfeld-Debugger'
 }
@@ -15,6 +16,11 @@ PenDebugger class >> on: aDebugSession [
 		debugSession: aDebugSession;
 		initialize;
 		yourself
+]
+
+{ #category : #accessing }
+PenDebugger >> announcer [
+	^ announcer ifNil: [ announcer := Announcer new ]
 ]
 
 { #category : #building }
@@ -51,6 +57,36 @@ PenDebugger >> codeEditorComponent [
 	^ codeEditor
 ]
 
+{ #category : #'accessing - compatibility' }
+PenDebugger >> currentContext [
+	^ self selectedContext
+		ifNil: [ self debugSession interruptedContext ]
+		ifNotNil: [ :ctx | ctx ]
+]
+
+{ #category : #components }
+PenDebugger >> debugActionBarComponent [
+	^ PenContainer new
+		addAllElements:
+			(self debugActions
+				collect: [ :actionClass | 
+					| action |
+					action := actionClass forDebugger: self.
+					PenButton new
+						text: action defaultLabel;
+						onActionDo: [ action executeAction ];
+						yourself ]) yourself
+]
+
+{ #category : #accessing }
+PenDebugger >> debugActions [
+	^ {ResumeDebugAction.
+	StepIntoDebugAction.
+	StepOverDebugAction.
+	StepThroughDebugAction.
+	RestartDebugAction}
+]
+
 { #category : #accessing }
 PenDebugger >> debugSession [
 	^ debugSession
@@ -65,7 +101,8 @@ PenDebugger >> debugSession: anObject [
 PenDebugger >> initialize [
 	super initialize.
 	self title: 'Pen Debugger Example'.
-	self initializeComponents
+	self initializeComponents.
+	self registerActions
 ]
 
 { #category : #initialization }
@@ -87,8 +124,38 @@ PenDebugger >> initializeComponents [
 							(PenContainer new
 								layout: PenFlowLayout new;
 								addAllElements: {self stackTableComponent}).
+							self debugActionBarComponent.
 							self codeEditorComponent})})}.
 	self withDisplayComponent: container
+]
+
+{ #category : #opening }
+PenDebugger >> open [
+	super open.
+	stackTable select: stackTable items first.
+
+]
+
+{ #category : #initialization }
+PenDebugger >> registerActions [ 
+	self debugSession
+			when: #restart send: #update to: self;
+			when: #resume send: #update to: self;
+			when: #stepInto send: #update to: self;
+			when: #stepOver send: #update to: self;
+			when: #stepThrough send: #update to: self;
+			when: #contextChanged send: #update to: self 
+]
+
+{ #category : #accessing }
+PenDebugger >> selectedContext [
+	stackTable selection isEmpty ifTrue:[^nil].
+	^(stackTable items at: stackTable selection first) key
+]
+
+{ #category : #'accessing - compatibility' }
+PenDebugger >> session [
+	^ self debugSession
 ]
 
 { #category : #accessing }
@@ -98,8 +165,8 @@ PenDebugger >> stack [
 
 { #category : #components }
 PenDebugger >> stackTableComponent [
-	stackStable := PenTable new.
-	stackStable
+	stackTable := PenTable new.
+	stackTable
 		sections:
 			{(PenSection new
 				selector: #receiverClass;
@@ -109,17 +176,17 @@ PenDebugger >> stackTableComponent [
 				size: 180).
 			(PenSection new selector: #context).
 			(PenSection new selector: #valueContext)}.
-	stackStable addAllItems: (self buildStackComponentFor: self stack).
-	stackStable allowToSelect: true.
-	stackStable dragSections: true.
-	stackStable dresser: PenBlocTableDresser new.
-	stackStable
+	stackTable addAllItems: (self buildStackComponentFor: self stack).
+	stackTable allowToSelect: true.
+	stackTable dragSections: true.
+	stackTable dresser: PenBlocTableDresser new.
+	stackTable
 		onSelectionChangedDo: [ self
-				updateContext: ((stackStable items at: stackStable selection first) key) ].
-	stackStable height: 250.
+				updateContext: ((stackTable items at: stackTable selection first) key) ].
+	stackTable height: 250.	
 	"component engineElement
 		constraintsDo: [ :c | c horizontal matchParent ]."
-	^ stackStable
+	^ stackTable
 ]
 
 { #category : #components }
@@ -137,6 +204,18 @@ PenDebugger >> titleLabelComponent: aString [
 	^ PenLabel new
 		text: aString;
 		addStyleClass: #title
+]
+
+{ #category : #updating }
+PenDebugger >> update [
+	| contextStackItems |
+	contextStackItems := self buildStackComponentFor: self stack.
+	stackTable removeAllItems.
+	stackTable addAllItems: contextStackItems.
+	stackTable
+		build;
+		refresh.
+	stackTable select: contextStackItems first
 ]
 
 { #category : #updating }
