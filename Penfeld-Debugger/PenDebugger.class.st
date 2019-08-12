@@ -100,8 +100,9 @@ PenDebugger >> debugSession: anObject [
 { #category : #initialization }
 PenDebugger >> initialize [
 	super initialize.
-	self title: 'Pen Debugger Example'.
+	
 	self initializeComponents.
+	self title: self session name.
 	self registerActions
 ]
 
@@ -120,7 +121,7 @@ PenDebugger >> initializeComponents [
 					{(PenContainer new
 						layout: PenLinearLayout vertical;
 						addAllElements:
-							{(self titleLabelComponent: 'Stack').
+							{"(self titleLabelComponent: 'Stack')."
 							(PenContainer new
 								layout: PenFlowLayout new;
 								addAllElements: {self stackTableComponent}).
