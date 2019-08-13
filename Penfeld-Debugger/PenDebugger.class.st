@@ -30,7 +30,7 @@ PenDebugger >> buildRowComponentForContext: aContext [
 	| row |
 	row := PenTableItem new.
 	"		row key: class name asSymbol."
-	row dresser: PenBlocTableItemDresser new.
+	row dresser: PenBlocTableItemDresser new.	
 	row
 		atSection: #receiverClass
 		put: (PenLabel text: aContext receiver class name ).
@@ -66,8 +66,6 @@ PenDebugger >> buildStackComponentFor: aStack [
 { #category : #components }
 PenDebugger >> codeEditorComponent [
 	codeEditor := PenCodeEditor new.
-	codeEditor position: 0@0.
-	codeEditor size: 800@300.
 	codeEditor dresser: PenBlocCodeEditorDresser new.
 	codeEditor behavior: Object.
 	^ codeEditor
@@ -132,23 +130,25 @@ PenDebugger >> initializeComponents [
 	container
 		addAllElements:
 			{(PenContainer new
-				layout: PenLinearLayout horizontal;
+				layout: PenLinearLayout vertical;
 				addAllElements:
 					{(PenContainer new
 						layout: PenLinearLayout vertical;
 						addAllElements:
 							{(PenContainer new
-								layout: PenFlowLayout new;
+								layout: PenLinearLayout horizontal;
+								key: #stack;
+								stylesheet: (PssParser parse: 'stack {margin: 10 10; border: 1px solid red;}');
 								addAllElements: {self stackTableComponent}).
 							self debugActionBarComponent.
 							self codeEditorComponent.
 							(PenContainer new
 								layout: PenLinearLayout horizontal;
-								addAllElements: {self receiverInspectorTable}).
-							(PenContainer new
-								layout: PenLinearLayout horizontal;
-								addAllElements: {self inspectedObjectList})})})}.
-	self withDisplayComponent: container
+								addAllElements:
+									{self receiverInspectorTable.
+									self inspectedObjectList})})})}.
+	self withDisplayComponent: container.
+	container stylesheet: PenStylesheet debuggerLight
 ]
 
 { #category : #components }
