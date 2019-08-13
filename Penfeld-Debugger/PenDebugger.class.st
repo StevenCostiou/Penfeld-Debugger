@@ -102,8 +102,9 @@ PenDebugger >> debugActionBarComponent [
 					| action |
 					action := actionClass forDebugger: self.
 					PenButton new
-						text: action defaultLabel;
+						"text: action defaultLabel;"
 						onActionDo: [ action executeAction ];
+						icon: (Smalltalk ui iconNamed: (action defaultIcon ifNil: [ #abstract ]));
 						yourself ]) yourself
 ]
 
