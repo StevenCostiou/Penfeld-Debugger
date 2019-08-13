@@ -6,8 +6,8 @@ Class {
 		'codeEditor',
 		'stackTable',
 		'announcer',
-		'inspectedObjectList',
-		'receiverInspectorTable'
+		'receiverInspectorTable',
+		'inspectedObjectTable'
 	],
 	#category : #'Penfeld-Debugger'
 }
@@ -49,11 +49,26 @@ PenDebugger >> buildRowComponentForInspectorNode: aNode [
 	"		row key: class name asSymbol."
 	row dresser: PenBlocTableItemDresser new.
 	row
+		atSection: #label
+		put:
+			(PenLabelWithModel new
+				model: aNode;
+				text: aNode variableTag;
+				yourself).
+	row
 		atSection: #slot
-		put: (PenLabelWithModel new model: aNode; text: aNode label; yourself).
+		put:
+			(PenLabelWithModel new
+				model: aNode;
+				text: aNode key;
+				yourself).
 	row
 		atSection: #value
-		put: (PenLabelWithModel new model: aNode; text: aNode value; yourself).
+		put:
+			(PenLabelWithModel new
+				model: aNode;
+				text: aNode value;
+				yourself).
 	^ row
 ]
 
@@ -137,8 +152,6 @@ PenDebugger >> initializeComponents [
 						addAllElements:
 							{(PenContainer new
 								layout: PenLinearLayout horizontal;
-								key: #stack;
-								stylesheet: (PssParser parse: 'stack {margin: 10 10; border: 1px solid red;}');
 								addAllElements: {self stackTableComponent}).
 							self debugActionBarComponent.
 							self codeEditorComponent.
@@ -153,12 +166,18 @@ PenDebugger >> initializeComponents [
 
 { #category : #components }
 PenDebugger >> inspectedObjectList [
-	inspectedObjectList := PenList new.
-	inspectedObjectList
-		size: 250 @ 400;
+	inspectedObjectTable := PenTable new.
+	inspectedObjectTable
+		sections:
+			{(PenSection new selector: #label; size: 60).
+			(PenSection new selector: #slot; size: 70).
+			(PenSection new selector: #value; size: 245)}.
+	inspectedObjectTable
+		size: 385 @ 220;
 		allowToSelect: true;
 		multiSelection: false.
-	^ inspectedObjectList
+	inspectedObjectTable dresser: PenBlocTableDresser new.
+	^ inspectedObjectTable
 ]
 
 { #category : #opening }
@@ -174,16 +193,25 @@ PenDebugger >> receiverInspectorTable [
 	receiverInspectorTable
 		sections:
 			{(PenSection new
+				selector: #label;
+				size: 60).
+			(PenSection new
 				selector: #slot;
-				size: 200).
+				size: 70).
 			(PenSection new
 				selector: #value;
-				size: 200)}.
+				size: 245)}.
 	receiverInspectorTable
-		size: 250 @ 400;
+		size: 385 @ 220;
 		allowToSelect: true;
 		multiSelection: false.
-		receiverInspectorTable dresser: PenBlocTableDresser new.
+	receiverInspectorTable dresser: PenBlocTableDresser new.
+	receiverInspectorTable
+		onSelectionChangedDo: [ self
+				updateInspectedObject:
+					((receiverInspectorTable items
+						at: receiverInspectorTable selection first) content at: #slot)
+						model rawValue ].
 	^ receiverInspectorTable
 ]
 
@@ -275,6 +303,21 @@ PenDebugger >> updateContext: aContext [
 	codeEditor behavior: aContext receiver class.
 	codeEditor setSelectionInterval: (self debugSession selectedCodeRangeForContext: aContext).
 	self updateInspectorsFrom: aContext
+]
+
+{ #category : #updating }
+PenDebugger >> updateInspectedObject: anObject [
+	| inspectedObjectNodes |
+	inspectedObjectNodes := OrderedCollection new.
+	anObject gtInspectorVariableNodesIn: inspectedObjectNodes.
+	inspectedObjectTable removeAllItems.
+	inspectedObjectTable
+		addAllItems:
+			(inspectedObjectNodes
+				collect: [ :n | self buildRowComponentForInspectorNode: n ]).
+	inspectedObjectTable
+		build;
+		refresh
 ]
 
 { #category : #updating }
